@@ -74,6 +74,7 @@ web_modules/
 
 # Local editor/IDE config
 .claude/
+CLAUDE.md
 
 # dotenv environment variable files
 .env
