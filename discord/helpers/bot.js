@@ -22,8 +22,6 @@ const {
  *   - GuildMessages     — receive messageCreate events in guild channels
  *   - MessageContent    — read the actual text of messages (privileged intent,
  *                         must also be enabled in the Developer Portal)
- *   - GuildMembers      — receive guildMemberAdd/Remove and member list data
- *                         (privileged intent)
  *
  * This module re-exports the discord.js classes that app.js needs so
  * that the rest of the codebase imports from one place rather than
@@ -34,7 +32,6 @@ const client = new Client({
 		GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildMessages,
 		GatewayIntentBits.MessageContent,
-		GatewayIntentBits.GuildMembers,
 	],
 });
 

@@ -82,13 +82,18 @@ client.once(Events.ClientReady, async () => {
 		.setDescription('Select your preferred language for TranslateBot')
 		.toJSON();
 
+	const newForgetCommand = new SlashCommandBuilder()
+		.setName('forget')
+		.setDescription('Delete your stored language preference from TranslateBot')
+		.toJSON();
+
 	client.guilds.cache.forEach(async (guild) => {
 		try {
 			const commands = await guild.commands.fetch();
-			const commandsToDelete = commands.filter((cmd) => ['Translate Message', 'language'].includes(cmd.name));
+			const commandsToDelete = commands.filter((cmd) => ['Translate Message', 'language', 'forget'].includes(cmd.name));
 			await Promise.all(commandsToDelete.map((cmd) => guild.commands.delete(cmd.id)));
 
-			await guild.commands.set([newTranslateCommand, newLanguageCommand]);
+			await guild.commands.set([newTranslateCommand, newLanguageCommand, newForgetCommand]);
 			console.log(`Commands registered for guild: ${guild.name}`);
 		} catch (error) {
 			console.error(`Error registering commands for guild: ${guild.name}`, error.stack);
@@ -124,6 +129,16 @@ client.on('interactionCreate', async (interaction) => {
 			await interaction.reply({
 				content: 'Set your preferred language:',
 				components: language_buttons,
+				ephemeral: true,
+			});
+		}
+
+		if (commandName === 'forget') {
+			const deleted = await UserPreferences.destroy({ where: { id: interaction.user.id } });
+			await interaction.reply({
+				content: deleted
+					? ':white_check_mark: Your stored language preference has been deleted.'
+					: 'You have no stored language preference to delete.',
 				ephemeral: true,
 			});
 		}

@@ -7,6 +7,7 @@ A Discord bot that translates messages on demand. Users pick a preferred languag
 - **Context-menu translation** — right-click any message → Apps → **Translate Message**. The result is ephemeral (only visible to you) and includes a link back to the original.
 - **Mention-based translation** — reply to a message while @mentioning the bot to get a public translation in the channel.
 - **Per-user language preference** — set once with `/language`, remembered across all servers the bot is in.
+- **Delete your data** — run `/forget` at any time to remove your stored language preference from the bot's database.
 - **15 supported languages** — English, Spanish, Hindi, French, German, Italian, Chinese, Japanese, Korean, Polish, Russian, Arabic, Dutch, Norwegian, Finnish.
 - **Auto-detection** — source language is detected automatically; no need to specify it.
 
@@ -60,6 +61,11 @@ A Discord bot that translates messages on demand. Users pick a preferred languag
 1. **Set your language** — run `/language` in any channel and click a button.
 2. **Translate a message** — right-click a message → Apps → **Translate Message**. You'll get a private embed with the translation.
 3. **Public translation** — reply to any message while @mentioning the bot. The translation is posted as a visible embed in the channel.
+4. **Delete your preference** — run `/forget` to wipe your stored language from the bot's database.
+
+## Privacy
+
+The bot stores only one thing per user: your Discord user ID and your chosen language code (e.g. `en`). It does **not** store message content, translation history, usernames, avatars, or any other personal data. Message text is sent to Google Translate at request time and discarded immediately. Run `/forget` at any time to delete your row.
 
 ## Development
 
@@ -73,7 +79,12 @@ CI runs ESLint, Prettier, and a syntax/import validation check on every push and
 
 ## Add the bot to your server
 
-[Invite link](https://discord.com/api/oauth2/authorize?client_id=1127004226816573490&permissions=83968&scope=bot)
+[Invite link](https://discord.com/api/oauth2/authorize?client_id=1127004226816573490&permissions=83968&scope=bot%20applications.commands)
+
+## Legal
+
+- [Privacy Policy](PRIVACY.md)
+- [Terms of Service](TERMS.md)
 
 ## License
 
