@@ -4,7 +4,7 @@ const translate = require('@iamtraction/google-translate');
 const ISO6391 = require('iso-639-1');
 const LD = require('languagedetect');
 const languagedetect = new LD();
-const { language_buttons } = require('./discord/embeds/panel');
+const { language_buttons, FLAG_EMOJIS } = require('./discord/embeds/panel');
 const { UserPreferences } = require('./discord/helpers/models');
 const {
 	client,
@@ -14,6 +14,9 @@ const {
 	WebhookClient,
 	ContextMenuCommandBuilder,
 	SlashCommandBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+	ActionRowBuilder,
 } = require('./discord/helpers/bot');
 
 /*
@@ -51,20 +54,42 @@ if (envError) {
  */
 const MAX_TRANSLATE_LENGTH = 5000;
 
+/** Guild ID → `/language` command ID, populated during command registration. */
+const languageCommandIds = new Map();
+
 process.on('SIGINT', () => {
 	console.log('Received SIGINT. Shutting down...');
 	process.exit(0);
 });
 
 /*
- * ClientReady — fires once after a successful login.
- *
- * Registers two guild-level application commands in every cached guild:
+ * Guild-level application commands, registered in every guild:
  *   1. "Translate Message" — a Message context-menu command (right-click)
  *   2. "/language"         — a slash command that shows the language picker
+ *   3. "/forget"           — deletes the user's stored language preference
+ */
+const newTranslateCommand = new ContextMenuCommandBuilder()
+	.setName('Translate Message')
+	.setType(ApplicationCommandType.Message)
+	.toJSON();
+
+const newLanguageCommand = new SlashCommandBuilder()
+	.setName('language')
+	.setDescription('Select your preferred language for TranslateBot')
+	.toJSON();
+
+const newForgetCommand = new SlashCommandBuilder()
+	.setName('forget')
+	.setDescription('Delete your stored language preference from TranslateBot')
+	.toJSON();
+
+/*
+ * ClientReady — fires once after a successful login.
  *
- * Existing stale copies of either command are deleted first to avoid
- * duplicates, then both are re-registered with `guild.commands.set()`.
+ * Registers the application commands in every cached guild. Existing stale
+ * copies are deleted first to avoid duplicates, then all are re-registered
+ * with `guild.commands.set()`. The registered `/language` command ID is
+ * captured per guild so it can be rendered as a clickable mention later.
  *
  * After registration, a status embed is sent to the dev webhook so we
  * know the bot came online.
@@ -72,28 +97,15 @@ process.on('SIGINT', () => {
 client.once(Events.ClientReady, async () => {
 	console.log(`Logged in as ${client.user.tag}!`);
 
-	const newTranslateCommand = new ContextMenuCommandBuilder()
-		.setName('Translate Message')
-		.setType(ApplicationCommandType.Message)
-		.toJSON();
-
-	const newLanguageCommand = new SlashCommandBuilder()
-		.setName('language')
-		.setDescription('Select your preferred language for TranslateBot')
-		.toJSON();
-
-	const newForgetCommand = new SlashCommandBuilder()
-		.setName('forget')
-		.setDescription('Delete your stored language preference from TranslateBot')
-		.toJSON();
-
 	client.guilds.cache.forEach(async (guild) => {
 		try {
 			const commands = await guild.commands.fetch();
 			const commandsToDelete = commands.filter((cmd) => ['Translate Message', 'language', 'forget'].includes(cmd.name));
 			await Promise.all(commandsToDelete.map((cmd) => guild.commands.delete(cmd.id)));
 
-			await guild.commands.set([newTranslateCommand, newLanguageCommand, newForgetCommand]);
+			const registered = await guild.commands.set([newTranslateCommand, newLanguageCommand, newForgetCommand]);
+			const langCmd = registered.find((cmd) => cmd.name === 'language');
+			if (langCmd) languageCommandIds.set(guild.id, langCmd.id);
 			console.log(`Commands registered for guild: ${guild.name}`);
 		} catch (error) {
 			console.error(`Error registering commands for guild: ${guild.name}`, error.stack);
@@ -103,12 +115,31 @@ client.once(Events.ClientReady, async () => {
 	const webhookClient = new WebhookClient({ id: process.env.WEBHOOK_ID, token: process.env.WEBHOOK_TOKEN });
 
 	const embed = new EmbedBuilder()
-		.setColor('#0099ff')
+		.setColor(0x5865f2)
 		.setTitle('Bot Status')
 		.setDescription(`Bot is ready as: ${client.user.tag}`)
+		.setFooter({ text: 'TranslateBot' })
 		.setTimestamp();
 
 	await webhookClient.send({ embeds: [embed] });
+});
+
+/*
+ * GuildCreate — fires when the bot joins a new guild.
+ *
+ * Registers the same application commands that ClientReady registers
+ * for already-cached guilds, so new guilds get commands immediately
+ * without requiring a bot restart.
+ */
+client.on(Events.GuildCreate, async (guild) => {
+	try {
+		const registered = await guild.commands.set([newTranslateCommand, newLanguageCommand, newForgetCommand]);
+		const langCmd = registered.find((cmd) => cmd.name === 'language');
+		if (langCmd) languageCommandIds.set(guild.id, langCmd.id);
+		console.log(`Commands registered for new guild: ${guild.name}`);
+	} catch (error) {
+		console.error(`Error registering commands for new guild: ${guild.name}`, error.stack);
+	}
 });
 
 /*
@@ -169,8 +200,9 @@ client.on('interactionCreate', async (interaction) => {
  *      by confidence — we take the top result.
  *   4. Short-circuit if the detected language matches the user's preference.
  *   5. Send the text to Google Translate targeting the user's language.
- *   6. Reply with an ephemeral embed showing from/to languages,
- *      the translated text, and a "Jump to original" link.
+ *   6. Reply with an ephemeral embed showing from/to languages, the
+ *      translated text, and the original message, plus a button row with
+ *      a jump link, an invite link, and a "How to Configure" helper.
  */
 client.on('interactionCreate', async (interaction) => {
 	if (!interaction.isContextMenuCommand()) return;
@@ -216,9 +248,9 @@ client.on('interactionCreate', async (interaction) => {
 
 	if (!msgLang) {
 		const embed = new EmbedBuilder()
-			.setTitle('Translation')
-			.setColor(0xff0000)
-			.addFields({ name: 'Error:', value: 'Unable to detect language of message!' })
+			.setTitle('Translation Error')
+			.setColor(0xed4245)
+			.addFields({ name: 'Details', value: 'Unable to detect language of message!' })
 			.setTimestamp();
 		await interaction.reply({
 			embeds: [embed],
@@ -229,9 +261,9 @@ client.on('interactionCreate', async (interaction) => {
 
 	if (msgLang === targetLang) {
 		const embed = new EmbedBuilder()
-			.setTitle('Translation')
-			.setColor(0x15ff00)
-			.addFields({ name: 'Error:', value: 'Message is already in the same language as your own native language!' })
+			.setTitle('Translation Error')
+			.setColor(0xed4245)
+			.addFields({ name: 'Details', value: 'Message is already in the same language as your own native language!' })
 			.setTimestamp();
 		await interaction.reply({
 			embeds: [embed],
@@ -244,18 +276,32 @@ client.on('interactionCreate', async (interaction) => {
 		const translated = await translate(targetMessage.content, { to: targetLang });
 		const langName = ISO6391.getName(translated.from.language.iso);
 
+		const flag = FLAG_EMOJIS[translated.from.language.iso] || '';
 		const embed = new EmbedBuilder()
-			.setTitle(`${langName} Translation`)
-			.setColor(0x15ff00)
+			.setTitle(`${flag ? flag + ' ' : ''}${langName} Translation`)
+			.setColor(0x5865f2)
 			.addFields(
-				{ name: 'From:', value: langName || 'Unknown', inline: true },
-				{ name: 'To:', value: ISO6391.getName(targetLang), inline: true },
-				{ name: 'Translated text:', value: translated.text },
-				{ name: 'Jump to original:', value: `[Click here](${targetMessage.url})` },
+				{ name: 'From', value: langName || 'Unknown', inline: true },
+				{ name: 'To', value: ISO6391.getName(targetLang), inline: true },
+				{ name: 'Translated Text', value: translated.text },
+				{ name: 'Original Message', value: targetMessage.content.slice(0, 1024) },
 			)
+			.setFooter({ text: 'TranslateBot' })
 			.setTimestamp();
 
-		await interaction.reply({ embeds: [embed], ephemeral: true });
+		const row = new ActionRowBuilder().addComponents(
+			new ButtonBuilder().setLabel('Jump to Original').setStyle(ButtonStyle.Link).setURL(targetMessage.url),
+			new ButtonBuilder()
+				.setLabel('Add to Server')
+				.setStyle(ButtonStyle.Link)
+				.setURL('https://discord.com/api/oauth2/authorize?client_id=1127004226816573490&permissions=83968&scope=bot'),
+			new ButtonBuilder()
+				.setCustomId('translatebot_configure')
+				.setLabel('How to Configure')
+				.setStyle(ButtonStyle.Secondary),
+		);
+
+		await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
 	} catch (error) {
 		console.error('Error during translation:', error.stack);
 		await interaction.reply({
@@ -281,6 +327,17 @@ client.on('interactionCreate', async (interaction) => {
  */
 client.on('interactionCreate', async (interaction) => {
 	if (!interaction.isButton()) return;
+
+	if (interaction.customId === 'translatebot_configure') {
+		const cmdId = languageCommandIds.get(interaction.guildId);
+		const langMention = cmdId ? `</language:${cmdId}>` : '`/language`';
+		await interaction.reply({
+			content: `Use ${langMention} to set your preferred language. Once set, any message you translate with **Apps → Translate Message** will automatically be translated into that language.`,
+			ephemeral: true,
+		});
+		return;
+	}
+
 	if (!interaction.customId.startsWith('translatebot_lang_')) return;
 
 	const langCode = interaction.customId.split('_')[2];
@@ -300,14 +357,15 @@ client.on('interactionCreate', async (interaction) => {
 		if (logChannel) {
 			const embed = new EmbedBuilder()
 				.setTitle('Language Set')
-				.setColor(0x15ff00)
+				.setColor(0x57f287)
 				.addFields(
-					{ name: 'User:', value: interaction.user.toString(), inline: true },
-					{ name: 'Guild:', value: interaction.guild.name, inline: true },
-					{ name: 'Channel:', value: interaction.channel.toString(), inline: true },
-					{ name: 'Language:', value: ISO6391.getName(langCode), inline: true },
+					{ name: 'User', value: interaction.user.toString(), inline: true },
+					{ name: 'Guild', value: interaction.guild.name, inline: true },
+					{ name: 'Channel', value: interaction.channel.toString(), inline: true },
+					{ name: 'Language', value: ISO6391.getName(langCode), inline: true },
 				)
 				.setThumbnail(interaction.user.avatarURL())
+				.setFooter({ text: 'TranslateBot' })
 				.setTimestamp();
 
 			await logChannel.send({ embeds: [embed] });
@@ -362,13 +420,14 @@ client.on('messageCreate', async (message) => {
 
 			const embed = new EmbedBuilder()
 				.setTitle('Translation')
-				.setColor(0x15ff00)
+				.setColor(0x5865f2)
 				.addFields(
-					{ name: 'Original:', value: originalMessage.content.slice(0, 1024), inline: true },
-					{ name: 'Translated:', value: translated.text.slice(0, 1024), inline: true },
-					{ name: 'Detected Language:', value: langName || 'Unknown', inline: true },
+					{ name: 'Original', value: originalMessage.content.slice(0, 1024), inline: true },
+					{ name: 'Translated', value: translated.text.slice(0, 1024), inline: true },
+					{ name: 'Detected Language', value: langName || 'Unknown', inline: true },
 				)
 				.setThumbnail(message.author.avatarURL())
+				.setFooter({ text: 'TranslateBot' })
 				.setTimestamp();
 
 			await repliedToMessage.reply({ embeds: [embed] });

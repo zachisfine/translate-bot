@@ -15,36 +15,115 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
  * Discord limits a message to 5 ActionRows with up to 5 buttons each.
  * Currently 15 of the 25 available slots are used.
  */
+
+const FLAG_EMOJIS = {
+	en: '\u{1F1EC}\u{1F1E7}',
+	es: '\u{1F1EA}\u{1F1F8}',
+	hi: '\u{1F1EE}\u{1F1F3}',
+	fr: '\u{1F1EB}\u{1F1F7}',
+	de: '\u{1F1E9}\u{1F1EA}',
+	it: '\u{1F1EE}\u{1F1F9}',
+	zh: '\u{1F1E8}\u{1F1F3}',
+	ja: '\u{1F1EF}\u{1F1F5}',
+	ko: '\u{1F1F0}\u{1F1F7}',
+	pl: '\u{1F1F5}\u{1F1F1}',
+	ru: '\u{1F1F7}\u{1F1FA}',
+	ar: '\u{1F1F8}\u{1F1E6}',
+	nl: '\u{1F1F3}\u{1F1F1}',
+	no: '\u{1F1F3}\u{1F1F4}',
+	fi: '\u{1F1EB}\u{1F1EE}',
+};
+
 const language_buttons = [
 	new ActionRowBuilder().addComponents(
-		new ButtonBuilder().setCustomId('translatebot_lang_en').setLabel('English').setStyle(ButtonStyle.Secondary),
-		new ButtonBuilder().setCustomId('translatebot_lang_es').setLabel('Spanish').setStyle(ButtonStyle.Secondary),
-		new ButtonBuilder().setCustomId('translatebot_lang_hi').setLabel('Hindi').setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_en')
+			.setLabel('English')
+			.setEmoji(FLAG_EMOJIS.en)
+			.setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_es')
+			.setLabel('Spanish')
+			.setEmoji(FLAG_EMOJIS.es)
+			.setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_hi')
+			.setLabel('Hindi')
+			.setEmoji(FLAG_EMOJIS.hi)
+			.setStyle(ButtonStyle.Secondary),
 	),
 
 	new ActionRowBuilder().addComponents(
-		new ButtonBuilder().setCustomId('translatebot_lang_fr').setLabel('French').setStyle(ButtonStyle.Secondary),
-		new ButtonBuilder().setCustomId('translatebot_lang_de').setLabel('German').setStyle(ButtonStyle.Secondary),
-		new ButtonBuilder().setCustomId('translatebot_lang_it').setLabel('Italian').setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_fr')
+			.setLabel('French')
+			.setEmoji(FLAG_EMOJIS.fr)
+			.setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_de')
+			.setLabel('German')
+			.setEmoji(FLAG_EMOJIS.de)
+			.setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_it')
+			.setLabel('Italian')
+			.setEmoji(FLAG_EMOJIS.it)
+			.setStyle(ButtonStyle.Secondary),
 	),
 
 	new ActionRowBuilder().addComponents(
-		new ButtonBuilder().setCustomId('translatebot_lang_zh').setLabel('Chinese').setStyle(ButtonStyle.Secondary),
-		new ButtonBuilder().setCustomId('translatebot_lang_ja').setLabel('Japanese').setStyle(ButtonStyle.Secondary),
-		new ButtonBuilder().setCustomId('translatebot_lang_ko').setLabel('Korean').setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_zh')
+			.setLabel('Chinese')
+			.setEmoji(FLAG_EMOJIS.zh)
+			.setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_ja')
+			.setLabel('Japanese')
+			.setEmoji(FLAG_EMOJIS.ja)
+			.setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_ko')
+			.setLabel('Korean')
+			.setEmoji(FLAG_EMOJIS.ko)
+			.setStyle(ButtonStyle.Secondary),
 	),
 
 	new ActionRowBuilder().addComponents(
-		new ButtonBuilder().setCustomId('translatebot_lang_pl').setLabel('Polish').setStyle(ButtonStyle.Secondary),
-		new ButtonBuilder().setCustomId('translatebot_lang_ru').setLabel('Russian').setStyle(ButtonStyle.Secondary),
-		new ButtonBuilder().setCustomId('translatebot_lang_ar').setLabel('Arabic').setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_pl')
+			.setLabel('Polish')
+			.setEmoji(FLAG_EMOJIS.pl)
+			.setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_ru')
+			.setLabel('Russian')
+			.setEmoji(FLAG_EMOJIS.ru)
+			.setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_ar')
+			.setLabel('Arabic')
+			.setEmoji(FLAG_EMOJIS.ar)
+			.setStyle(ButtonStyle.Secondary),
 	),
 
 	new ActionRowBuilder().addComponents(
-		new ButtonBuilder().setCustomId('translatebot_lang_nl').setLabel('Dutch').setStyle(ButtonStyle.Secondary),
-		new ButtonBuilder().setCustomId('translatebot_lang_no').setLabel('Norwegian').setStyle(ButtonStyle.Secondary),
-		new ButtonBuilder().setCustomId('translatebot_lang_fi').setLabel('Finnish').setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_nl')
+			.setLabel('Dutch')
+			.setEmoji(FLAG_EMOJIS.nl)
+			.setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_no')
+			.setLabel('Norwegian')
+			.setEmoji(FLAG_EMOJIS.no)
+			.setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('translatebot_lang_fi')
+			.setLabel('Finnish')
+			.setEmoji(FLAG_EMOJIS.fi)
+			.setStyle(ButtonStyle.Secondary),
 	),
 ];
 
-module.exports = { language_buttons };
+module.exports = { language_buttons, FLAG_EMOJIS };
